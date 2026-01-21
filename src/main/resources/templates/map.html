@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>위험도 지도 서비스</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.4.0/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js"></script>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" th:href="@{/css/map.css?v=1.9}">
+</head>
+
+<body>
+
+    <!-- 검색창 -->
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="장소를 입력하세요" />
+        <button id="search-button">🔍</button>
+    </div>
+
+
+    <!-- Layer Control Panel -->
+    <div class="layer-control">
+        <h4>Layer Control</h4>
+        <label><input type="checkbox" id="chk-cctv" value="CCTV"> CCTV (방범)</label>
+        <label><input type="checkbox" id="chk-police" value="POLICE"> Police (경찰서)</label>
+        <label><input type="checkbox" id="chk-light" value="STREET_LIGHT"> Street Lamp (가로등)</label>
+        <hr>
+        <label><input type="checkbox" id="chk-refined-risk" value="REFINED_RISK"> 위험도 히트맵</label>
+        <div class="admin-toggle-wrapper">
+            <span id="toggle-admin">⚙️ Admin Settings</span>
+        </div>
+    </div>
+
+    <!-- Data Import Admin Section (Hidden by default) -->
+    <div id="admin-section" style="display: none;">
+        <button id="btn-import-data">🔄 데이터 가져오기 (관리자용)</button>
+    </div>
+
+    <!-- 맵 타입 선택 (우측 하단 줌 버튼 위) -->
+    <div class="map-type-control">
+        <button id="btn-base" class="active">일반</button>
+        <button id="btn-satellite">위성</button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- 팝업 오버레이 -->
+    <div id="popup" class="ol-popup">
+        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+        <div id="popup-content"></div>
+    </div>
+
+    <script th:src="@{/js/config.js?v=2.2}"></script>
+    <script th:src="@{/js/map.js?v=2.2}"></script>
+    <script th:src="@{/js/layers.js?v=2.2}"></script>
+    <script th:src="@{/js/heatmap.js?v=2.2}"></script>
+    <script th:src="@{/js/search.js?v=2.2}"></script>
+    <script th:src="@{/js/admin.js?v=2.2}"></script>
+</body>
+
+</html>
