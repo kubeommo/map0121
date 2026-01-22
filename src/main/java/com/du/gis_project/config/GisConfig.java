@@ -45,6 +45,15 @@ public class GisConfig {
         private Center center = new Center();
         private Bounds bounds = new Bounds();
         private Grid grid = new Grid();
+        private int zoom = 12; // 기본 줌 값 추가
+
+        public int getZoom() {
+            return zoom;
+        }
+
+        public void setZoom(int zoom) {
+            this.zoom = zoom;
+        }
 
         public Center getCenter() {
             return center;

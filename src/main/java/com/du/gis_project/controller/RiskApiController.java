@@ -60,7 +60,6 @@ public class RiskApiController {
                 risks = riskService.getRisksByType(RiskType.valueOf(type));
             }
 
-            // 성남시 경계 밖의 시설물 제외
             risks = risks.stream()
                     .filter(r -> riskIntegrationService.isInsideSeongnam(r.getLatitude(), r.getLongitude()))
                     .toList();
@@ -94,7 +93,6 @@ public class RiskApiController {
             );
         }
 
-        // GisConfig를 Map 구조로 반환해서 JS에서 읽기 쉽게 변환
         return Map.of(
                 "status", "OK",
                 "vworld", Map.of("key", gisConfig.getVworld().getKey()),
@@ -102,7 +100,7 @@ public class RiskApiController {
                         "lon", gisConfig.getMap().getCenter().getLon(),
                         "lat", gisConfig.getMap().getCenter().getLat()
                 ),
-                "zoom",  gisConfig.getMap().getCenter() != null ? 15 : 12
+                "zoom", gisConfig.getMap().getZoom() // 이제 존재함
         );
     }
 
@@ -133,7 +131,6 @@ public class RiskApiController {
 
         String query = address.trim();
 
-        // 도로명 주소/지번 주소 혼용 검색
         boolean isAddressLikely = query.matches(".*[로길동리읍면]$") ||
                 query.matches(".*[로길]\\s?\\d+.*") ||
                 query.matches(".*\\d+번길.*") ||

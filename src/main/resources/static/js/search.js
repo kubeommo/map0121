@@ -5,13 +5,11 @@
 // map.js에서 생성된 markerSource와 markerLayer를 사용
 // addMarker 함수만 정의
 function addMarker(lon, lat) {
-    // 기존 마커 삭제 (항상 최신 핑만 유지)
     markerSource.clear();
 
+    const coordinate = ol.proj.fromLonLat([lon, lat]); // 좌표 변환 적용
     const marker = new ol.Feature({
-        geometry: new ol.geom.Point(
-            ol.proj.fromLonLat([lon, lat])
-        )
+        geometry: new ol.geom.Point(coordinate)
     });
 
     marker.setStyle(iconStyle);
@@ -22,7 +20,7 @@ function addMarker(lon, lat) {
 // 지도 클릭 시 마커 및 주소 표시
 // ============================
 if (map) {
-    map.on('click', function (evt) {
+    map.on('click', function(evt) {
         const coord = ol.proj.toLonLat(evt.coordinate);
         const lon = coord[0];
         const lat = coord[1];
@@ -62,12 +60,12 @@ if (map) {
 }
 
 // ============================
-// 검색 기능
+// 검색 기능 (좌표 변환 적용)
 // ============================
 const searchInput = document.getElementById('search-input');
 const searchButton = document.getElementById('search-button');
 
-function performSearch() {
+async function searchAddress() {
     if (!searchInput) return;
     const query = searchInput.value.trim();
     if (!query) {
@@ -75,79 +73,57 @@ function performSearch() {
         return;
     }
 
-    fetch(`/api/proxy/search?address=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(data => {
-            const items = data.response?.result?.items;
-            if (!items || items.length === 0) {
-                alert('검색 결과를 찾을 수 없습니다.');
-                return;
-            }
+    try {
+        const response = await fetch(`/api/proxy/search?address=${encodeURIComponent(query)}`);
+        const result = await response.json();
 
-            // 도로명 + 지번 주소 혼용 최적화
-            let bestItem = items[0];
-            let maxScore = -1;
-            const cleanQuery = query.replace(/\s/g, '');
+        if (!result.response || !result.response.result || !result.response.result.items.length) {
+            alert('검색 결과를 찾을 수 없습니다.');
+            return;
+        }
 
-            items.forEach(item => {
-                const originalTitle = item.title.replace(/<[^>]*>?/gm, '').trim();
-                const noSpaceTitle = originalTitle.replace(/\s/g, '');
-                let score = 0;
+        const item = result.response.result.items[0];
+        const lon = parseFloat(item.point.x);
+        const lat = parseFloat(item.point.y);
 
-                if (noSpaceTitle === cleanQuery) score += 100;
-                else if (noSpaceTitle.includes(cleanQuery) || cleanQuery.includes(noSpaceTitle)) score += 50;
+        if (isNaN(lon) || isNaN(lat)) {
+            alert('유효한 좌표를 찾을 수 없습니다.');
+            return;
+        }
 
-                // 주소 길이가 짧을수록 점수 상승
-                score += (100 - noSpaceTitle.length);
+        // 좌표 변환 (EPSG:4326 -> EPSG:3857)
+        const coordinate = ol.proj.fromLonLat([lon, lat]);
 
-                // 지번/도로명 혼용 체크
-                const addressString = (item.address?.road || item.address?.parcel || '').replace(/\s/g, '');
-                if (addressString.includes(cleanQuery)) score += 20;
+        // 마커
+        markerSource.clear();
+        const feature = new ol.Feature({ geometry: new ol.geom.Point(coordinate) });
+        markerSource.addFeature(feature);
 
-                if (score > maxScore) {
-                    maxScore = score;
-                    bestItem = item;
-                }
-            });
+        // 팝업
+        content.innerHTML = `
+            <span style="font-weight:bold; color:#3498db;">[검색 결과]</span><br/>
+            <span style="font-weight:bold;">${item.title}</span><br/>
+            <span style="font-size:12px; color:#555;">${item.address?.road || item.address?.parcel || ''}</span>
+            <p style="margin-top:8px; font-size:11px; color:#999; margin-bottom:0;">
+            좌표: ${lon.toFixed(5)}, ${lat.toFixed(5)}</p>
+        `;
+        overlay.setPosition(coordinate);
 
-            const item = bestItem;
-            const lon = parseFloat(item.point?.x);
-            const lat = parseFloat(item.point?.y);
-
-            if (isNaN(lon) || isNaN(lat)) {
-                alert('유효한 좌표를 찾을 수 없습니다.');
-                return;
-            }
-
-            const coordinate = ol.proj.fromLonLat([lon, lat]);
-            markerSource.clear();
-            addMarker(lon, lat);
-
-            content.innerHTML = `
-                <span style="font-weight:bold; color:#3498db;">[검색 결과]</span><br/>
-                <span style="font-weight:bold;">${item.title}</span><br/>
-                <span style="font-size:12px; color:#555;">${item.address?.road || item.address?.parcel || ''}</span>
-                <p style="margin-top:8px; font-size:11px; color:#999; margin-bottom:0;">
-                좌표: ${lon.toFixed(5)}, ${lat.toFixed(5)}</p>
-            `;
-
-            map.getView().cancelAnimations();
-            map.getView().animate({
-                center: coordinate,
-                zoom: 17,
-                duration: 800,
-                easing: ol.easing.easeOut
-            }, function(complete) {
-                if (complete) overlay.setPosition(coordinate);
-            });
-        })
-        .catch(err => {
-            console.error('검색 수행 에러:', err);
-            alert('검색 도중 서버 오류가 발생했습니다.');
+        // 지도 이동
+        map.getView().cancelAnimations();
+        map.getView().animate({
+            center: coordinate,
+            zoom: 16,
+            duration: 800
         });
+
+    } catch (err) {
+        console.error(err);
+        alert('검색 중 오류가 발생했습니다.');
+    }
 }
 
-if (searchButton) searchButton.addEventListener('click', performSearch);
+if (searchButton) searchButton.addEventListener('click', searchAddress);
 if (searchInput) searchInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') performSearch();
+    if (e.key === 'Enter') searchAddress();
 });
